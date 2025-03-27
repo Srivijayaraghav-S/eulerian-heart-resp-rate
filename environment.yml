@@ -1,0 +1,5 @@
+name: eulerian-repo
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+prefix: /home/fyp_sridevimam_fall/anaconda3/envs/eulerian-repo
