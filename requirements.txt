@@ -3,3 +3,4 @@ dlib
 imutils
 numpy
 scipy
+matplotlib
