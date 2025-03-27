@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-faceCascade = cv2.CascadeClassifier("haarcascades/haarcascades/haarcascade_frontalface_alt0.xml")
+faceCascade = cv2.CascadeClassifier("haarcascades/haarcascade_frontalface_alt0.xml")
 
 
 # Read in and simultaneously preprocess video
