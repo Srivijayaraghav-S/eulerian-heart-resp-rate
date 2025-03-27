@@ -10,7 +10,7 @@ freq_max = 1.8
 
 # Preprocessing phase
 print("Reading + preprocessing video...")
-video_frames, frame_ct, fps = preprocessing.read_video("videos/rohin_active.mov")
+video_frames, frame_ct, fps = preprocessing.read_video("videos/videos/rohin_active.mov")
 
 # Build Laplacian video pyramid
 print("Building Laplacian video pyramid...")
