@@ -14,9 +14,9 @@ files are described below:
 - heartrate.py - Contains function to calculate heart rate from FFT results
 
 ## Setting up the environment:
-Run `conda env create -f environment.yml`.
+1. `python -m venv <env-name>`
+2. `source <env-name>/bin/activate`
+3. `pip install -r requirements.txt`
 
 ## How to run:
-To run the program, specify the path to the input video in the preprocessing.read_video() function on line 13 of
-main.py. To alter the frequency range to be filtered, change the values assigned to freq_min and freq_max on lines 8
-and 9.
+`python fall.py`
