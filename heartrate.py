@@ -60,7 +60,7 @@ def find_heart_rate(fft, freqs, freq_min, freq_max, previous_hr=None):
         return 0.0
     
     # Physiological range check
-    if not (40 <= hr <= 180):
+    if not (40 <= hr <= 240):
         print(f"[WARNING] Physiologically implausible HR: {hr:.1f} BPM")
         return 0.0
     
