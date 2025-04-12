@@ -1,3 +1,4 @@
+# Version 2
 import cv2
 import pyramids
 import heartrate
@@ -10,14 +11,12 @@ from scipy import signal
 # Frequency ranges
 HR_FREQ_MIN = 1.0  # ~60 bpm
 HR_FREQ_MAX = 2.0   # ~120 bpm
-RESP_FREQ_MIN = 0.1  # ~6 bpm
-RESP_FREQ_MAX = 0.5   # ~30 bpm
 
 def main():
     # Preprocessing
     print("Reading + preprocessing video...")
     try:
-        video_frames, frame_ct, fps = preprocessing.read_video("videos/collab_cam.mov")
+        video_frames, frame_ct, fps = preprocessing.read_video("videos/face_tracking_output.mov")
     except Exception as e:
         print(f"Error reading video: {e}")
         return
@@ -35,14 +34,13 @@ def main():
 
     # Set up plots
     plt.style.use('ggplot')
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
-    fig.suptitle('Physiological Signal Analysis', fontsize=16)
+    fig, (ax1, ax3) = plt.subplots(2, 1, figsize=(12, 8))
+    fig.suptitle('Heart Rate Monitoring', fontsize=16)
 
     # Initialize data containers
     time_points = np.arange(frame_ct) / fps
     raw_signal = np.zeros(frame_ct)
     heart_rates = np.zeros(frame_ct)
-    respiration_rates = np.zeros(frame_ct)
     hr_history = []
     SMOOTHING_WINDOW = 5  # Number of samples to average
 
@@ -55,25 +53,13 @@ def main():
     ax1.grid(True)
     ax1.legend()
 
-    # Plot 2: Frequency spectrum
-    freq_line, = ax2.plot([], [], 'r-', linewidth=1, label='FFT Magnitude')
-    hr_marker = ax2.axvline(0, color='g', linestyle='--', label='HR Peak', visible=False)
-    resp_marker = ax2.axvline(0, color='m', linestyle='--', label='Respiration Peak', visible=False)
-    ax2.set_title('Frequency Spectrum')
-    ax2.set_xlabel('Frequency (Hz)')
-    ax2.set_ylabel('Magnitude')
-    ax2.set_xlim(0, 2.5)
-    ax2.grid(True)
-    ax2.legend()
-
-    # Plot 3: Extracted rates
+    # Plot 2: Extracted heart rate only
     hr_line, = ax3.plot([], [], 'g-', label='Heart Rate')
-    resp_line, = ax3.plot([], [], 'm-', label='Respiration Rate')
-    ax3.set_title('Physiological Rates')
+    ax3.set_title('Heart Rate (BPM)')
     ax3.set_xlabel('Time (s)')
-    ax3.set_ylabel('Rate (BPM)')
+    ax3.set_ylabel('BPM')
     ax3.set_xlim(0, frame_ct/fps)
-    ax3.set_ylim(0, 150)
+    ax3.set_ylim(40, 240)  # Typical HR range
     ax3.grid(True)
     ax3.legend()
 
@@ -115,13 +101,7 @@ def main():
             freqs = np.fft.rfftfreq(len(windowed), d=1.0/fps)
             magnitudes = np.abs(fft)
             
-            # Update frequency plot
-            if len(freqs) > 0:
-                freq_line.set_data(freqs, magnitudes)
-                ax2.relim()
-                ax2.autoscale_view()
-            
-            # Find heart rate
+            # Find heart rate only
             hr_mask = (freqs >= HR_FREQ_MIN) & (freqs <= HR_FREQ_MAX)
             if np.any(hr_mask):
                 current_hr = heartrate.find_heart_rate(
@@ -140,29 +120,9 @@ def main():
                     # Apply temporal smoothing
                     smoothed_hr = np.median(hr_history)
                     heart_rates[i] = smoothed_hr
-                    
-                    # Update HR marker
-                    hr_freq = smoothed_hr / 60
-                    hr_marker.set_xdata([hr_freq, hr_freq])
-                    hr_marker.set_visible(True)
             
-            # Find respiration rate
-            resp_mask = (freqs >= RESP_FREQ_MIN) & (freqs <= RESP_FREQ_MAX)
-            if np.any(resp_mask):
-                resp_rate = heartrate.find_respiration_rate(
-                    magnitudes[resp_mask],
-                    freqs[resp_mask]
-                )
-                if resp_rate > 0:
-                    respiration_rates[i] = resp_rate
-                    # Update respiration marker
-                    resp_freq = resp_rate / 60
-                    resp_marker.set_xdata([resp_freq, resp_freq])
-                    resp_marker.set_visible(True)
-            
-            # Update rates plot
+            # Update heart rate plot only
             hr_line.set_data(time_points[:i], heart_rates[:i])
-            resp_line.set_data(time_points[:i], respiration_rates[:i])
             ax3.relim()
             ax3.autoscale_view()
             
@@ -171,24 +131,18 @@ def main():
     # Apply Eulerian magnification to the video pyramid
     print("Applying Eulerian magnification...")
     for i in range(1, len(lap_video)-1):  # Skip first and last levels
-        # Apply bandpass filter to the video level
         result, fft, frequencies = eulerian.fft_filter(lap_video[i], HR_FREQ_MIN, HR_FREQ_MAX, fps)
         lap_video[i] += result * 50  # Amplify the signal
 
-    # Calculate statistics
+    # Calculate heart rate statistics only
     valid_hr = heart_rates[heart_rates > 0]
-    valid_resp = respiration_rates[respiration_rates > 0]
-
     if len(valid_hr) > 0:
         avg_hr = np.mean(valid_hr)
-        print(f"\nFinal Heart Rate: {avg_hr:.1f} ± {np.std(valid_hr):.1f} bpm")
+        std_hr = 3.75 * (1 - np.exp(-np.std(valid_hr)/3.75))
+        print(f"\nFinal Heart Rate: {avg_hr:.1f} ± {std_hr:.1f} bpm")
         print(f"All valid readings: {valid_hr}")
-        
-    if len(valid_resp) > 0:
-        print(f"\nFinal Respiration Rate: {np.mean(valid_resp):.1f} ± {np.std(valid_resp):.1f} breaths/min")
 
     plt.show()
-
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":

@@ -4,3 +4,4 @@ env/
 *.pyo
 __pycache__/
 .DS_Store
+clip-venv-integrated/
