@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Real-Time Fall Detection and rPPG</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #fff;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 800px;
+      width: 90%;
+      padding: 40px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    #videoStream {
+      border: 5px solid #fff;
+      border-radius: 10px;
+      box-shadow: 0px 0px 20px rgba(0,0,0,0.5);
+    }
+    footer {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-top: 20px;
+    }
+    #heartRateContainer {
+      font-family: monospace;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+    #heartRateDigits {
+      font-size: 6em;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+
+  <script>
+    let hrFinalized = false;
+    let rollInterval;
+    let switchedToTracking = false;
+
+    // Start rolling animation
+    function startRollingHR() {
+      const digits = document.getElementById("heartRateDigits");
+      rollInterval = setInterval(() => {
+        if (!hrFinalized) {
+          let fakeHR = "";
+          for (let i = 0; i < 3; i++) {
+            fakeHR += Math.floor(Math.random() * 10);
+          }
+          digits.textContent = fakeHR;
+        }
+      }, 70);
+    }
+
+    // Reset UI on load
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("videoStream").style.display = "block";
+      document.getElementById("videoStream").src = "/fall_detection";
+      document.getElementById("heartRateContainer").style.display = "none";
+      document.getElementById("heartRateDigits").textContent = "--";
+      hrFinalized = false;
+      switchedToTracking = false;
+    });
+
+    // Toggle plots section
+    function togglePlots() {
+      const section = document.getElementById("plotsSection");
+      section.style.display = section.style.display === "none" ? "block" : "none";
+    }
+
+    // Monitor backend status
+    setInterval(() => {
+      fetch('/status_check')
+        .then(res => res.json())
+        .then(data => {
+          if (data.fall_detected && !switchedToTracking) {
+            document.getElementById("videoStream").src = "/face_tracking";
+            switchedToTracking = true;
+          }
+
+          if (data.fall_detected && data.recording_complete && !hrFinalized) {
+            document.getElementById("videoStream").style.display = "none";
+            document.getElementById("heartRateContainer").style.display = "flex";
+            startRollingHR();
+          }
+        });
+    }, 1000);
+
+    // Show final HR
+    setInterval(() => {
+      fetch('/get_final_heart_rate')
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "done" && !hrFinalized) {
+            hrFinalized = true;
+            clearInterval(rollInterval);
+            document.getElementById("heartRateDigits").textContent = data.heart_rate;
+          }
+        });
+    }, 1500);
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Fall Detection and rPPG</h1>
+
+    <!-- Video Stream -->
+    <img id="videoStream" src="/fall_detection" width="720" height="480" alt="Video Stream">
+
+    <!-- Heart Rate Display -->
+    <div id="heartRateContainer">
+      <div id="heartRateDigits">--</div>
+      <div style="font-size: 2em; color: #ccc;">BPM</div>
+    </div>
+
+    <!-- Plot Download Toggle -->
+    <div style="margin-top: 40px; text-align: left;">
+      <button onclick="togglePlots()" style="background: #fff; color: #1e3c72; font-weight: bold; padding: 10px 20px; border-radius: 8px; border: none;">
+        📊 View Plots
+      </button>
+
+      <div id="plotsSection" style="display: none; margin-top: 20px;">
+        <div>
+          <h3>Facial Score Plot</h3>
+          <img src="/static/plots/facial_score.png" alt="Facial Score" width="100%">
+          <a href="/static/plots/facial_score.png" download>Download</a> |
+          <a href="/static/plots/facial_score.png" target="_blank">Open in new tab</a>
+        </div>
+        <hr>
+        <div>
+          <h3>Heart Rate Monitoring</h3>
+          <img src="/static/plots/hr_monitoring.png" alt="Heart Rate Monitoring" width="100%">
+          <a href="/static/plots/hr_monitoring.png" download>Download</a> |
+          <a href="/static/plots/hr_monitoring.png" target="_blank">Open in new tab</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      &copy; 2025 Dev-Shahbaz-Vijay. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
